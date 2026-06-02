@@ -1330,19 +1330,31 @@ export function registerApiTriggers(
     },
   });
 
-  sdk.registerFunction("api::graph-query", 
+  sdk.registerFunction("api::graph-query",
     async (
       req: ApiRequest<{
         startNodeId?: string;
         nodeType?: string;
         maxDepth?: number;
         query?: string;
+        limit?: number;
+        offset?: number;
       }>,
     ): Promise<Response> => {
       const authErr = checkAuth(req, secret);
       if (authErr) return authErr;
+      // Whitelist payload fields explicitly; AGENTS.md security rule:
+      // REST endpoints never pass raw req.body through to sdk.trigger.
+      const payload = {
+        startNodeId: req.body?.startNodeId,
+        nodeType: req.body?.nodeType,
+        maxDepth: req.body?.maxDepth,
+        query: req.body?.query,
+        limit: req.body?.limit,
+        offset: req.body?.offset,
+      };
       try {
-        const result = await sdk.trigger({ function_id: "mem::graph-query", payload: req.body || {} });
+        const result = await sdk.trigger({ function_id: "mem::graph-query", payload });
         return { status_code: 200, body: result };
       } catch {
         return graphDisabledResponse();
